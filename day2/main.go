@@ -18,16 +18,20 @@ func main() {
 
 	var games []game
 	var total int
+	var totalPower int
 	lines := strings.Split(input, "\n")
 	for _, line := range lines {
 		game := parseLine(line)
 		if isValid(&game) {
 			total += game.num
 		}
+		totalPower += getPower(&game)
+
 		games = append(games, game)
 	}
 
 	fmt.Printf("total: %d\n", total)
+	fmt.Printf("total power: %d\n", totalPower)
 }
 
 type game struct {
@@ -35,10 +39,18 @@ type game struct {
 	grabs []grab
 }
 
+func newGame() game {
+	return game{}
+}
+
 type grab struct {
 	red   int
 	green int
 	blue  int
+}
+
+func newGrab() grab {
+	return grab{}
 }
 
 var maxGrab = grab{red: 12, green: 13, blue: 14}
@@ -50,6 +62,23 @@ func isValid(game *game) bool {
 		}
 	}
 	return true
+}
+
+func getPower(game *game) int {
+	max := newGrab()
+	for _, grab := range game.grabs {
+		if grab.red > max.red {
+			max.red = grab.red
+		}
+		if grab.green > max.green {
+			max.green = grab.green
+		}
+		if grab.blue > max.blue {
+			max.blue = grab.blue
+		}
+	}
+
+	return max.red * max.green * max.blue
 }
 
 func parseLine(input string) game {
