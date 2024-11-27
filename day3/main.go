@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -12,10 +13,92 @@ func main() {
 	}
 	lexer := newLexer(string(data))
 	fmt.Printf("lexer: %v\n", lexer)
+
+	// get all tokens
 	tokens := tokenize(&lexer)
-	for _, token := range tokens {
+	total := 0
+
+	//fmt.Printf("tokens: %v\n", tokens)
+
+	// add em up
+	for _, token := range *tokens {
 		printToken(&token)
+		if token.tokenType == Symbol {
+			continue
+		}
+
+		//line := token.pos / LineLen
+		//fmt.Printf("%v = line %d\n", token, line)
 	}
+	fmt.Printf("total: %d\n", total)
+}
+
+const LineLen = 10 // just hardcode it
+func validNum(tokens *map[int]token, token *token) int {
+	if hasAdjacentSymbol(tokens, token) {
+		n, err := strconv.Atoi(token.chars)
+		if err != nil {
+			panic("out of the range")
+		}
+		return n
+	}
+	return 0
+}
+
+func hasAdjacentSymbol(tokens *map[int]token, star *token) bool {
+
+	//fmt.Printf("all tokens: %v\n", tokens)
+
+	for i, t := range *tokens {
+		fmt.Printf("at index %d, t = %v\n", i, t)
+		// dimiss other numbers
+		if t.tokenType == Number {
+
+			fmt.Println("  number")
+			continue
+		}
+
+		// get row above
+		for j := star.pos - LineLen - 1; j < star.pos-LineLen+star.len; j++ {
+			fmt.Printf("  j (star based) = %d vs i = %d\n", j, i)
+			if j == i {
+				fmt.Println("    match")
+				//if value, ok := tokens[i]
+
+				return true
+			}
+		}
+
+		// get left of
+		ab := star.pos - 1
+		fmt.Printf("  ab (star based) = %d vs i = %d\n", ab, i)
+		if ab == i {
+			fmt.Println("    match")
+			return true
+		}
+
+		// get right of
+		aa := star.pos + star.len
+		if aa == i {
+			fmt.Printf("  aa (star based) = %d vs i = %d\n", aa, i)
+			fmt.Println("    match")
+			return true
+		}
+
+		// get row below
+		for j := star.pos + LineLen + 1; j < star.pos+LineLen+star.len; j++ {
+			fmt.Printf("  j (star based) = %d vs i = %d\n", j, i)
+			if j == i {
+				fmt.Println("    match")
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func validIndex(i int, length int) bool {
+	return i >= 0 && i < length
 }
 
 type lexer struct {
@@ -54,8 +137,8 @@ func printCurrentRune(lexer *lexer) {
 	fmt.Printf("lexer.runes[%d] = %d = %s\n", lexer.pos, lexer.runes[lexer.pos], string(lexer.runes[lexer.pos]))
 }
 
-func tokenize(lexer *lexer) []token {
-	var tokens []token
+func tokenize(lexer *lexer) *map[int]token {
+	tokens := make(map[int]token)
 
 	for lexer.pos < len(lexer.runes) {
 		skipSpace(lexer)
@@ -64,6 +147,7 @@ func tokenize(lexer *lexer) []token {
 			break
 		}
 
+		key := lexer.pos
 		current := token{
 			pos: lexer.pos,
 		}
@@ -75,34 +159,32 @@ func tokenize(lexer *lexer) []token {
 			var num []rune
 			next := peek(lexer)
 			for isNum(next) {
-				printCurrentRune(lexer)
+				//printCurrentRune(lexer)
 				num = append(num, next)
 
-				offset++
+				lexer.pos++
 				next = peekAt(lexer, offset)
 			}
 			current.len = len(num)
 			current.chars = string(num)
-			fmt.Printf("current N: %v\n", current.chars)
 
-			tokens = append(tokens, current)
+			tokens[key] = current
 
 		} else if isSymbol(r) {
-			printCurrentRune(lexer)
+			//printCurrentRune(lexer)
 			current.tokenType = Symbol
 
 			offset++
 			sym := []rune(string(r))
 			current.len = len(sym)
 			current.chars = string(sym)
-			fmt.Printf("current S: %v\n", current.chars)
 
-			tokens = append(tokens, current)
+			tokens[key] = current
 
 		}
 		lexer.pos += offset
 	}
-	return tokens
+	return &tokens
 }
 
 type TokenType string
